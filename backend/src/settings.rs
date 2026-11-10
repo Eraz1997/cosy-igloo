@@ -1,0 +1,41 @@
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+pub struct Settings {
+    #[arg(long, default_value = "http://localhost:3000")]
+    frontend_development_server_uri: String,
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+    #[arg(long, env = "KIWI_AUTHORISED_USERS", default_value = "[]")]
+    pub kiwi_authorised_users: String,
+    #[arg(
+        long,
+        env,
+        default_value = "postgresql://postgres:postgres@localhost:5432/postgres"
+    )]
+    pub kiwi_postgres_uri: String,
+    #[arg(long, default_value = "info")]
+    pub log_level: tracing::Level,
+    #[arg(long, default_value = "5000")]
+    port: i32,
+    #[arg(long, default_value = "/path")]
+    pub static_files_path: String,
+}
+
+impl Settings {
+    pub fn connection_string(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
+
+    pub fn is_development(&self) -> bool {
+        cfg!(debug_assertions)
+    }
+
+    pub fn get_frontend_development_server_uri(&self) -> Option<&str> {
+        if self.is_development() {
+            Some(&self.frontend_development_server_uri)
+        } else {
+            None
+        }
+    }
+}

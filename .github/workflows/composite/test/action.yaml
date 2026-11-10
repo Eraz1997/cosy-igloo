@@ -1,0 +1,15 @@
+name: Test
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Mise
+      uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+    - name: Install Dependencies
+      shell: bash -euo pipefail {0}
+      run: mise run setup
+
+    - name: Lint
+      shell: bash -euo pipefail {0}
+      run: mise run lint:check

@@ -1,0 +1,147 @@
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use deadpool_postgres::{CreatePoolError, PoolError};
+use kangaroo_axum::IntoKangarooError;
+use reqwest::header::{InvalidHeaderName, InvalidHeaderValue};
+use serde::Serialize;
+use std::fmt::{Display, Formatter};
+
+#[derive(Debug, Clone)]
+pub struct Error {
+    pub code: StatusCode,
+    pub message: String,
+}
+
+impl Display for Error {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "Error {}: {}", self.code, self.message)
+    }
+}
+
+impl Error {
+    pub fn bad_environment_variable(name: &str, error: impl Display) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: format!("{} is not valid: {}", name, error),
+        }
+    }
+
+    pub fn unauthorised_user() -> Self {
+        Self {
+            code: StatusCode::UNAUTHORIZED,
+            message: "you are not authorised to access this resource".to_string(),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        let message = if self.code == StatusCode::INTERNAL_SERVER_ERROR {
+            tracing::error!("{}", self);
+            "internal server error".to_string()
+        } else {
+            self.message
+        };
+        (self.code, message).into_response()
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KangarooError {
+    error_message: String,
+}
+
+impl IntoKangarooError for Error {
+    fn into_kangaroo_error(self) -> (StatusCode, impl serde::Serialize) {
+        (
+            self.code,
+            KangarooError {
+                error_message: self.message,
+            },
+        )
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(error: reqwest::Error) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<CreatePoolError> for Error {
+    fn from(error: CreatePoolError) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<PoolError> for Error {
+    fn from(error: PoolError) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<tokio_postgres::Error> for Error {
+    fn from(error: tokio_postgres::Error) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<refinery::Error> for Error {
+    fn from(error: refinery::Error) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(error: serde_json::Error) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<InvalidHeaderValue> for Error {
+    fn from(error: InvalidHeaderValue) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<InvalidHeaderName> for Error {
+    fn from(error: InvalidHeaderName) -> Self {
+        Self {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: error.to_string(),
+        }
+    }
+}
